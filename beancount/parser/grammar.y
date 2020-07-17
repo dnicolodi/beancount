@@ -454,8 +454,7 @@ posting : INDENT optflag account incomplete_amount cost_spec eol
 
 key_value : KEY COLON key_value_value
           {
-              BUILDY(DECREF($2, $3),
-                     $$, "key_value", "OO", $2, $3);
+              CALL($$, PyTuple_Pack, 2, $1, $3);
           }
 
 key_value_line : INDENT key_value eol

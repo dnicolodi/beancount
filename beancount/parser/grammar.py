@@ -45,14 +45,6 @@ ParserSyntaxError = collections.namedtuple('ParserSyntaxError', 'source message 
 DeprecatedError = collections.namedtuple('DeprecatedError', 'source message entry')
 
 
-
-# Key-value pairs. This is used to hold meta-data attachments temporarily.
-#
-# Attributes:
-#  key: A string, the name of the key.
-#  value: Any object.
-KeyValue = collections.namedtuple('KeyValue', 'key value')
-
 # Value-type pairs. This is used to represent custom values where the concrete
 # datatypes aren't matching those which are found in the parser.
 #
@@ -756,20 +748,6 @@ class Builder(lexer.LexBuilder):
             dtype = type(value)
         return ValueType(value, dtype)
 
-    def key_value(self, filename, lineno, key, value):
-        """Process a document directive.
-
-        Args:
-          filename: The current filename.
-          lineno: The current line number.
-          date: A datetime object.
-          account: A string, the account the document relates to.
-          document_filename: A str, the name of the document file.
-        Returns:
-          A new KeyValue object.
-        """
-        return KeyValue(key, value)
-
     def posting(self, filename, lineno, account, units, cost, price, istotal, flag):
         """Process a posting grammar rule.
 
@@ -949,9 +927,8 @@ class Builder(lexer.LexBuilder):
                         links.update(posting_or_kv.links)
                 else:
                     if last_posting is None:
-                        value = explicit_meta.setdefault(posting_or_kv.key,
-                                                         posting_or_kv.value)
-                        if value is not posting_or_kv.value:
+                        key, value = posting_or_kv
+                        if explicit_meta.setdefault(key, value) is not value:
                             self.errors.append(ParserError(
                                 meta, "Duplicate metadata field on entry: {}".format(
                                     posting_or_kv), None))
@@ -961,9 +938,8 @@ class Builder(lexer.LexBuilder):
                             postings.pop(-1)
                             postings.append(last_posting)
 
-                        value = last_posting.meta.setdefault(posting_or_kv.key,
-                                                             posting_or_kv.value)
-                        if value is not posting_or_kv.value:
+                        key, value = posting_or_kv
+                        if last_posting.meta.setdefault(key, value) is not value:
                             self.errors.append(ParserError(
                                 meta, "Duplicate posting metadata field: {}".format(
                                     posting_or_kv), None))

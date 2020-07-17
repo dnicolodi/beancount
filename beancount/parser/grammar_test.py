@@ -2122,17 +2122,6 @@ class TestLexerAndParserErrors(cmptest.TestCase):
         """
         self.check_entries_errors(entries, errors)
 
-    @mock.patch('beancount.parser.grammar.Builder.key_value', raise_exception)
-    @parser.parse_doc(expect_errors=True)
-    def test_grammar_exceptions__key_value(self, entries, errors, _):
-        """
-          2010-01-01 close Assets:Before
-          2010-01-01 commodity HOOL
-            key: "Value"
-          2000-01-01 open Assets:Before
-        """
-        self.check_entries_errors(entries, errors)
-
     @mock.patch('beancount.parser.grammar.Builder.posting', raise_exception)
     @parser.parse_doc(expect_errors=True)
     def test_grammar_exceptions__posting(self, entries, errors, _):
