@@ -124,6 +124,45 @@ void yyerror(YYLTYPE* loc, yyscan_t scanner, PyObject* builder, char const* mess
 
 #define DECREF(...) _CC_FUNC(Py_DECREF, __VA_ARGS__)
 
+#define CALL(target, func, ...)                                         \
+    target = func(__VA_ARGS__);                                         \
+    if (!target) {                                                      \
+        build_grammar_error_from_exception(&yyloc, builder);            \
+        YYERROR;                                                        \
+    }
+
+#define list_append(list, element)                              \
+    ({                                                          \
+        if (element == Py_None) {                               \
+            printf("%d: list_append element=None\n", __LINE__); \
+        }                                                       \
+        _list_append(list, element);                            \
+    })
+
+
+static PyObject* _list_append(PyObject* list, PyObject* element)
+{
+    if (list == Py_None) {
+        Py_DECREF(list);
+        list = PyList_New(0);
+        if (!list) {
+            return NULL;
+        }
+    }
+
+    if (element == Py_None) {
+        return list;
+    }
+
+    int r = PyList_Append(list, element);
+    if (r < 0) {
+        Py_DECREF(list);
+        return NULL;
+    }
+
+    return list;
+}
+
 %}
 
 
@@ -339,8 +378,7 @@ txn_strings : %empty
             }
             | txn_strings STRING
             {
-                BUILDY(DECREF($1, $2),
-                       $$, "handle_list", "OO", $1, $2);
+                CALL($$, list_append, $1, $2);
             }
             | txn_strings PIPE
             {
@@ -451,18 +489,15 @@ posting_or_kv_list : %empty
                    }
                    | posting_or_kv_list INDENT tags_links eol
                    {
-                       BUILDY(DECREF($1, $3),
-                              $$, "handle_list", "OO", $1, $3);
+                       CALL($$, list_append, $1, $3);
                    }
                    | posting_or_kv_list key_value_line
                    {
-                       BUILDY(DECREF($1, $2),
-                              $$, "handle_list", "OO", $1, $2);
+                       CALL($$, list_append, $1, $2);
                    }
                    | posting_or_kv_list posting
                    {
-                       BUILDY(DECREF($1, $2),
-                              $$, "handle_list", "OO", $1, $2);
+                       CALL($$, list_append, $1, $2);
                    }
 
 key_value_list : %empty
@@ -476,8 +511,7 @@ key_value_list : %empty
                }
                | key_value_list key_value_line
                {
-                   BUILDY(DECREF($1, $2),
-                          $$, "handle_list", "OO", $1, $2);
+                   CALL($$, list_append, $1, $2);
                }
 
 currency_list : %empty
@@ -487,13 +521,11 @@ currency_list : %empty
               }
               | CURRENCY
               {
-                  BUILDY(DECREF($1),
-                         $$, "handle_list", "OO", Py_None, $1);
+                  CALL($$, list_append, Py_None, $1);
               }
               | currency_list COMMA CURRENCY
               {
-                  BUILDY(DECREF($1, $3),
-                         $$, "handle_list", "OO", $1, $3);
+                  CALL($$, list_append, $1, $3);
               }
 
 pushtag : PUSHTAG TAG eol
@@ -642,13 +674,11 @@ cost_comp_list : %empty
                }
                | cost_comp
                {
-                   BUILDY(DECREF($1),
-                          $$, "handle_list", "OO", Py_None, $1);
+                   CALL($$, list_append, Py_None, $1);
                }
                | cost_comp_list COMMA cost_comp
                {
-                   BUILDY(DECREF($1, $3),
-                          $$, "handle_list", "OO", $1, $3);
+                   CALL($$, list_append, $1, $3);
                }
 
 cost_comp : compound_amount
@@ -734,8 +764,7 @@ custom_value_list : %empty
                   }
                   | custom_value_list custom_value
                   {
-                      BUILDY(DECREF($1, $2),
-                             $$, "handle_list", "OO", $1, $2);
+                      CALL($$, list_append, $1, $2);
                   }
 
 custom : DATE CUSTOM STRING custom_value_list eol key_value_list
@@ -792,8 +821,7 @@ declarations : declarations EOL
              | declarations directive
              | declarations entry
              {
-                 BUILDY(DECREF($1, $2),
-                        $$, "handle_list", "OO", $1, $2);
+                 CALL($$, list_append, $1, $2);
              }
              | declarations error
              {

@@ -538,21 +538,6 @@ class Builder(lexer.LexBuilder):
 
         return CostSpec(number_per, number_total, currency, date_, label, merge)
 
-    def handle_list(self, filename, lineno, object_list, new_object):
-        """Handle a recursive list grammar rule, generically.
-
-        Args:
-          object_list: the current list of objects.
-          new_object: the new object to be added.
-        Returns:
-          The new, updated list of objects.
-        """
-        if object_list is None:
-            object_list = []
-        if new_object is not None:
-            object_list.append(new_object)
-        return object_list
-
     def open(self, filename, lineno, date, account, currencies, booking_str, kvlist):
         """Process an open directive.
 
