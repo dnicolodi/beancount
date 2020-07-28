@@ -155,7 +155,7 @@ const char* token_to_string(int token);
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 145 "beancount/parser/grammar.y"
+#line 143 "beancount/parser/grammar.y"
 
     char character;
     const char* string;

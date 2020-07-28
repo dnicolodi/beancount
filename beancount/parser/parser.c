@@ -77,8 +77,6 @@ PyObject* pydate_from_cstring(const char* string)
     return PyDate_FromDate(year, month, day);
 }
 
-extern YY_DECL;
-
 /* Placeholder object for missing cost specifications. */
 PyObject* missing_obj;
 
@@ -237,12 +235,6 @@ static PyObject* parser_iternext(Parser* self)
     int token;
     PyObject* obj;
 
-    /* Ensure the scanner has been initialized. */
-    if (!yyget_in(self->scanner)) {
-        PyErr_SetString(PyExc_ValueError, "Parser not initialized");
-        return NULL;
-    }
-
     /* Get one token. */
     token = yylex(&yylval, &yylloc, self->scanner, self->builder);
     if (PyErr_Occurred() || token == 0) {
@@ -267,7 +259,7 @@ static PyObject* parser_iternext(Parser* self)
     /* Yield a (token name, line, matched string, token value) tuple. */
     return Py_BuildValue("(siy#O)",
                          token_to_string(token),
-                         yylloc.first_line,
+                         yylloc.last_line,
                          yyget_text(self->scanner),
                          (Py_ssize_t)yyget_leng(self->scanner),
                          obj);
@@ -348,9 +340,12 @@ static struct PyModuleDef moduledef = {
 
 PyMODINIT_FUNC PyInit__parser(void)
 {
+    PyObject* beancount_core_number;
+    PyObject* module;
+
     Py_INCREF(&Parser_Type);
 
-    PyObject* module = PyModule_Create(&moduledef);
+    module = PyModule_Create(&moduledef);
     if (!module) {
         goto error;
     }
@@ -359,12 +354,7 @@ PyMODINIT_FUNC PyInit__parser(void)
     PyDecimal_IMPORT;
 
 #define SETATTR(module, name, value)                       \
-    if (!value) {                                          \
-        goto error;                                        \
-    }                                                      \
-    if (PyObject_SetAttrString(module, name, value) < 0) { \
-        goto error;                                        \
-    }
+    PyObject_SetAttrString(module, name, value)
 
     /* Hash of the this Python extension source code. */
     SETATTR(module, "SOURCE_HASH",
@@ -391,12 +381,12 @@ PyMODINIT_FUNC PyInit__parser(void)
 #undef SETATTR
 
     /* Import the module that defines the missing object constant. */
-    PyObject* number_module = PyImport_ImportModule("beancount.core.number");
-    if (!number_module) {
+    beancount_core_number = PyImport_ImportModule("beancount.core.number");
+    if (!beancount_core_number) {
         goto error;
     }
 
-    missing_obj = PyObject_GetAttrString(number_module, "MISSING");
+    missing_obj = PyObject_GetAttrString(beancount_core_number, "MISSING");
     if (!missing_obj) {
         goto error;
     }

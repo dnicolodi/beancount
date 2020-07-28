@@ -21,8 +21,8 @@
  */
 #define token(name, ...)                                                \
     (                                                                   \
-        yylval->pyobj = EXPAND(build_##name(__VA_ARGS__)),              \
-        yylval->pyobj ? name : build_EXCEPTION(yylloc, builder)         \
+        yylval.pyobj = EXPAND(build_##name(__VA_ARGS__)),               \
+        yylval.pyobj ? name : build_EXCEPTION(yylloc, builder)          \
     )
 
 #define build_STR(_ptr, _len) PyUnicode_FromStringAndSize(_ptr, _len)
@@ -38,6 +38,7 @@
 #define build_ACCOUNT(_str) PyUnicode_InternFromString(_str)
 #define build_EXCEPTION(_loc, _builder) ( build_lexer_error_from_exception(_loc, _builder), YYerror )
 
+C_BEGIN_DECLS
 
 /**
  * Validate number string representation and remove commas.
@@ -85,5 +86,6 @@ ssize_t cunescape(const char* string, size_t len, int strict, char** ret, int* l
  */
 PyObject* pyunicode_from_cquotedstring(char* string, size_t len, const char* encoding);
 
+C_END_DECLS
 
 #endif /* BEANCOUNT_TOKENS_H */
