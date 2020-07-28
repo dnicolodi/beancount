@@ -157,6 +157,13 @@ ACCOUNTNAME     ([A-Z0-9]|{UTF-8-ONLY})([A-Za-z0-9\-]|{UTF-8-ONLY})*
 
 [ \t\r]+ { }
 
+ /* Special handling for characters beginning a line to be ignored. */
+^[\*\:].*	{ }
+^#[^A-Za-z0-9\-_/.].*	{ }
+
+ /* Comments. */
+;+.*		{ return COMMENT; }
+
  /* Characters with special meanings have their own tokens. */
 \|		{ return PIPE; }
 @@		{ return ATAT; }
@@ -172,44 +179,9 @@ ACCOUNTNAME     ([A-Z0-9]|{UTF-8-ONLY})([A-Za-z0-9\-]|{UTF-8-ONLY})*
 \/		{ return SLASH; }
 \(		{ return LPAREN; }
 \)		{ return RPAREN; }
-
- /* Special handling for characters beginning a line to be ignored.
-  * I'd like to improve how this is handled. Needs own lexer, really. */
-\#		{
-    if (yy_line_tokens != 1) {
-        return HASH;
-    }
-    else {
-        /* Allow org-mode titles. */
-        yy_skip_line();
-    }
-}
-
-\*		{
-    if (yy_line_tokens != 1) {
-        return ASTERISK;
-    }
-    else {
-        /* Allow org-mode titles. */
-        yy_skip_line();
-    }
-}
-
-\:		{
-  if (yy_line_tokens != 1) {
-    return COLON;
-  }
-  else {
-    /* Allow org-mode drawers. */
-    yy_skip_line();
-  }
-}
-
- /* Skip commented output (but not the accompanying newline). */
-;+.*		{
-    /* yy_skip_line(); */
-    return COMMENT;
-}
+\#		{ return HASH; }
+\*		{ return ASTERISK; }
+\:		{ return COLON; }
 
  /* Special characters which may be used in-lieu of a 'txn' keyword in a
     transaction declaration output as a token. Other lines are just skipped.
