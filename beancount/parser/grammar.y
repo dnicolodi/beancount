@@ -154,7 +154,6 @@ void yyerror(YYLTYPE* loc, yyscan_t scanner, PyObject* builder, char const* mess
 /* Types for terminal symbols */
 %token <string> INDENT     /* Initial indent IF at the beginning of a line */
 %token <string> EOL        /* End-of-line */
-%token <string> COMMENT    /* A comment */
 %token <string> PIPE       /* | */
 %token <string> ATAT       /* @@ */
 %token <string> AT         /* @ */
@@ -292,12 +291,9 @@ txn : TXN
     }
 
 eol : EOL
-    | COMMENT EOL
     | YYEOF
-    | COMMENT YYEOF
 
 empty_line : EOL
-           | COMMENT
            | INDENT
 
 /* FIXME: This needs be made more general, dealing with precedence.
@@ -461,7 +457,7 @@ posting_or_kv_list : %empty
                        Py_INCREF(Py_None);
                        $$ = Py_None;
                    }
-                   | posting_or_kv_list INDENT COMMENT eol
+                   | posting_or_kv_list INDENT eol
                    {
                        $$ = $1;
                    }

@@ -151,7 +151,7 @@ ACCOUNTNAME     ([A-Z0-9]|{UTF-8-ONLY})([A-Za-z0-9\-]|{UTF-8-ONLY})*
 ^{FLAGS}	{ yy_skip_line(); }
 
  /* Comments. */
-;.*		{ return COMMENT; }
+;.*		{ }
 
  /* Characters with special meanings have their own tokens. */
 \|		{ return PIPE; }
