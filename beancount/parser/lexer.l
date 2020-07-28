@@ -63,9 +63,6 @@ void yylex_initialize(PyObject* file, PyObject* filename, int lineno, const char
 #include "tokens.h"
 
 struct _yyextra_t {
-    /* Number of tokens since the beginning of the line. */
-    int n_line_tokens;
-
     /* The filename being tokenized. */
     PyObject* filename;
 
@@ -73,7 +70,6 @@ struct _yyextra_t {
     const char* encoding;
 };
 
-#define yy_line_tokens yyget_extra(yyscanner)->n_line_tokens
 #define yy_filename yyget_extra(yyscanner)->filename
 #define yy_encoding yyget_extra(yyscanner)->encoding
 
@@ -91,7 +87,6 @@ int pyfile_read_into(PyObject *file, char *buf, size_t max_size);
 
 #define YY_USER_ACTION                                                  \
     {                                                                   \
-        yy_line_tokens++;                                               \
         yylloc->first_line = yylineno;                                  \
         yylloc->last_line = yylloc->first_line;                         \
         yylloc->first_column = yycolumn;                                \
@@ -131,6 +126,7 @@ UTF-8-4         \xf0[\x90-\xbf]{UTF-8-1}{UTF-8-1}|[\xf1-\xf3]{UTF-8-1}{UTF-8-1}{
 UTF-8-ONLY      {UTF-8-2}|{UTF-8-3}|{UTF-8-4}
 UTF-8           {ASCII}|{UTF-8-ONLY}
 
+FLAGS           [!&#?%PSTCURM]
 ACCOUNTTYPE     ([A-Z]|{UTF-8-ONLY})([A-Za-z0-9\-]|{UTF-8-ONLY})*
 ACCOUNTNAME     ([A-Z0-9]|{UTF-8-ONLY})([A-Za-z0-9\-]|{UTF-8-ONLY})*
 
@@ -139,7 +135,6 @@ ACCOUNTNAME     ([A-Z0-9]|{UTF-8-ONLY})([A-Za-z0-9\-]|{UTF-8-ONLY})*
 
  /* Newlines are output as explicit tokens, because lines matter in the syntax. */
 \n		{
-    yy_line_tokens = 0;
     yycolumn = 1;
     return EOL;
 }
@@ -149,12 +144,11 @@ ACCOUNTNAME     ([A-Z0-9]|{UTF-8-ONLY})([A-Za-z0-9\-]|{UTF-8-ONLY})*
     initial indent and thus group postings and comments together in
     the grammar. */
 ^[ \t]+/[^ \t\r\n]	{ return INDENT; }
-
 [ \t\r]+ { }
 
  /* Special handling for characters beginning a line to be ignored. */
 ^[\*\:].*	{ }
-^#[^A-Za-z0-9\-_/.].*	{ }
+^{FLAGS}	{ yy_skip_line(); }
 
  /* Comments. */
 ;+.*		{ return COMMENT; }
@@ -178,22 +172,13 @@ ACCOUNTNAME     ([A-Z0-9]|{UTF-8-ONLY})([A-Za-z0-9\-]|{UTF-8-ONLY})*
 \*		{ return ASTERISK; }
 \:		{ return COLON; }
 
- /* Special characters which may be used in-lieu of a 'txn' keyword in a
-    transaction declaration output as a token. Other lines are just skipped.
-    This allows us to use org-mode or other separators in the input syntax.
-
-    Note: You need to make sure to include all the values from
-    beancount.core.flags, in order for round-trips between text and entries to
-    be possible. {5307d8fa1e7b}
-    */
-[!&#?%PSTCURM]	{
-    if (yy_line_tokens != 1) {
-        yylval->character = yytext[0];
-        return FLAG;
-    }
-    else {
-        yy_skip_line();
-    }
+ /* Characters that may be used as flags in-lieu of a 'txn' keyword in a
+    transaction declaration.  Note: Make sure to include all the values from
+    beancount.core.flags in order for round-trips between text and entries to
+    be possible. {5307d8fa1e7b} */
+{FLAGS}		{
+    yylval->character = yytext[0];
+    return FLAG;
 }
 
  /* Keywords. */
@@ -266,7 +251,7 @@ NULL		{
     return token(LINK, yytext + 1, yyleng - 1);
 }
 
- /* Key */
+ /* Keys */
 [a-z][a-zA-Z0-9\-_]+/: 		{
     return token(KEY, yytext, yyleng);
 }
@@ -363,7 +348,7 @@ void yylex_initialize(PyObject* file, PyObject* filename, int lineno, const char
     Py_XDECREF(extra->filename);
     extra->filename = filename;
 
-    extra->n_line_tokens = 0;
+    extra->line = lineno;
     extra->encoding = encoding ? encoding : "utf-8";
 
     Py_XDECREF(yyget_in(scanner));
