@@ -293,16 +293,11 @@ txn : TXN
 eol : EOL
     | YYEOF
 
-empty_line : EOL
-
 /* FIXME: This needs be made more general, dealing with precedence.
    I just need this right now, so I'm putting it in, in a way that will.
    be backwards compatible, so this is just a bit of a temporary hack
    (blais, 2015-04-18). */
 number_expr : NUMBER
-            {
-                $$ = $1;
-            }
             | number_expr PLUS number_expr
             {
                 $$ = PyNumber_Add($1, $3);
@@ -391,9 +386,6 @@ optflag : %empty
         | FLAG
 
 price_annotation : incomplete_amount
-                 {
-                     $$ = $1;
-                 }
 
 account : ACCOUNT
         {
@@ -442,9 +434,6 @@ key_value_value : STRING
                 | NONE
                 | number_expr
                 | amount
-                {
-                    $$ = $1;
-                }
                 | %empty
                 {
                     Py_INCREF(Py_None);
@@ -542,9 +531,6 @@ open : DATE OPEN account currency_list opt_booking eol key_value_list
      }
 
 opt_booking : STRING
-            {
-                $$ = $1;
-            }
             | %empty
             {
                 Py_INCREF(Py_None);
@@ -596,25 +582,19 @@ amount_tolerance : number_expr CURRENCY
                      $$.pyobj2 = $3;
                  }
 
-maybe_number : %empty
+maybe_number : number_expr
+             | %empty
              {
                  Py_INCREF(missing_obj);
                  $$ = missing_obj;
-             }
-             | number_expr
-             {
-                 $$ = $1;
              }
 
-maybe_currency : %empty
-             {
-                 Py_INCREF(missing_obj);
-                 $$ = missing_obj;
-             }
-             | CURRENCY
-             {
-                 $$ = $1;
-             }
+maybe_currency : CURRENCY
+               | %empty
+               {
+                   Py_INCREF(missing_obj);
+                   $$ = missing_obj;
+               }
 
 compound_amount : maybe_number CURRENCY
                 {
@@ -637,7 +617,7 @@ incomplete_amount : maybe_number maybe_currency
                   {
                       BUILDY(DECREF($1, $2),
                              $$, "amount", "OO", $1, $2);
-                 }
+                  }
 
 cost_spec : LCURL cost_comp_list RCURL
           {
@@ -672,23 +652,13 @@ cost_comp_list : %empty
                }
 
 cost_comp : compound_amount
-          {
-              $$ = $1;
-          }
           | DATE
-          {
-              $$ = $1;
-          }
           | STRING
-          {
-              $$ = $1;
-          }
           | ASTERISK
           {
               BUILDY(,
                      $$, "cost_merge", "O", Py_None);
           }
-
 
 price : DATE PRICE CURRENCY amount eol key_value_list
       {
@@ -721,7 +691,6 @@ document : DATE DOCUMENT account filename tags_links eol key_value_list
              BUILDY(DECREF($1, $3, $4, $5, $7),
                     $$, "document", "OOOOO", $1, $3, $4, $5, $7);
          }
-
 
 custom_value : STRING
              {
@@ -775,7 +744,6 @@ custom : DATE CUSTOM STRING custom_value_list eol key_value_list
                   $$, "custom", "OOOO", $1, $3, $4, $6);
        }
 
-
 entry : transaction
       | balance
       | open
@@ -788,9 +756,6 @@ entry : transaction
       | commodity
       | query
       | custom
-      {
-          $$ = $1;
-      }
 
 option : OPTION STRING STRING eol
        {
@@ -815,8 +780,7 @@ plugin : PLUGIN STRING eol
                   $$, "plugin", "OO", $2, $3);
        }
 
-directive : empty_line
-          | pushtag
+directive : pushtag
           | poptag
           | pushmeta
           | popmeta
@@ -824,11 +788,8 @@ directive : empty_line
           | include
           | plugin
 
-
-declarations : declarations directive
-             {
-                 $$ = $1;
-             }
+declarations : declarations EOL
+             | declarations directive
              | declarations entry
              {
                  BUILDY(DECREF($1, $2),

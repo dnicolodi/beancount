@@ -348,7 +348,6 @@ void yylex_initialize(PyObject* file, PyObject* filename, int lineno, const char
     Py_XDECREF(extra->filename);
     extra->filename = filename;
 
-    extra->line = lineno;
     extra->encoding = encoding ? encoding : "utf-8";
 
     Py_XDECREF(yyget_in(scanner));
