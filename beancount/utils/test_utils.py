@@ -129,6 +129,29 @@ def call_command(command):
 
 
 @contextlib.contextmanager
+def named_temp_file_content(content=None, **kwargs):
+    """A context manager that creates a named temporary file with the
+    specifid content and deletes it unconditionally once done. This is
+    meant to replace usages of tempfile.NamedTemporaryFile() as the
+    file returned by it cannot be opened again for reading on Windows.
+
+    Args:
+      content: A bytes object, the content to be written in the file.
+    Yields:
+      The file path to the temporary file.
+    """
+    fd, tmpname = tempfile.mkstemp(**kwargs)
+    if not isinstance(content, bytes):
+        content = content.encode('utf8')
+    os.write(fd, content)
+    os.close(fd)
+    try:
+        yield tmpname
+    finally:
+        os.unlink(tmpname)
+
+
+@contextlib.contextmanager
 def tempdir(delete=True, **kw):
     """A context manager that creates a temporary directory and deletes its
     contents unconditionally once done.

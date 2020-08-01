@@ -49,15 +49,13 @@ class TestLoader(unittest.TestCase):
 
     def test_load(self):
         with test_utils.capture():
-            with tempfile.NamedTemporaryFile('w') as tmpfile:
-                tmpfile.write(TEST_INPUT)
-                tmpfile.flush()
-                entries, errors, options_map = loader.load_file(tmpfile.name)
+            with test_utils.named_temp_file_content(TEST_INPUT) as tmpname:
+                entries, errors, options_map = loader.load_file(tmpname)
                 self.assertTrue(isinstance(entries, list))
                 self.assertTrue(isinstance(errors, list))
                 self.assertTrue(isinstance(options_map, dict))
 
-                entries, errors, options_map = loader.load_file(tmpfile.name,
+                entries, errors, options_map = loader.load_file(tmpname,
                                                                 log_timings=logging.info)
                 self.assertTrue(isinstance(entries, list))
                 self.assertTrue(isinstance(errors, list))
