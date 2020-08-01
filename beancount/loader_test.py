@@ -75,7 +75,7 @@ class TestLoader(unittest.TestCase):
             self.assertTrue(isinstance(options_map, dict))
 
     def test_load_nonexist(self):
-        entries, errors, options_map = loader.load_file('/some/bullshit/filename.beancount')
+        entries, errors, options_map = loader.load_file('some-non-existent-filename.beancount')
         self.assertEqual([], entries)
         self.assertTrue(errors)
         self.assertRegex(errors[0].message, 'does not exist')
@@ -143,6 +143,10 @@ class TestLoadDoc(unittest.TestCase):
             self.assertFalse(errors)
 
 
+def _quote(s):
+    return s.replace('\\', '\\\\').replace('"', '\\"')
+
+
 class TestLoadIncludes(unittest.TestCase):
 
     def test_load_file_no_includes(self):
@@ -158,7 +162,7 @@ class TestLoadIncludes(unittest.TestCase):
                              list(map(path.basename, options_map['include'])))
 
     def test_load_file_nonexist(self):
-        entries, errors, options_map = loader.load_file('/bull/bla/root.beancount')
+        entries, errors, options_map = loader.load_file('some-non-existent-filename.beancount')
         self.assertEqual(1, len(errors))
         self.assertRegex(errors[0].message, 'does not exist')
         self.assertEqual([], list(map(path.basename, options_map['include'])))
@@ -167,7 +171,7 @@ class TestLoadIncludes(unittest.TestCase):
         with test_utils.tempdir() as tmp:
             test_utils.create_temporary_files(tmp, {
                 'root.beancount': """
-                  include "/some/file/that/does/not/exist.beancount"
+                  include "some-non-existent-filename.beancount"
                 """})
             entries, errors, options_map = loader.load_file(
                 path.join(tmp, 'root.beancount'))
@@ -178,14 +182,15 @@ class TestLoadIncludes(unittest.TestCase):
 
     def test_load_file_with_absolute_include(self):
         with test_utils.tempdir() as tmp:
+            include = _quote(path.join(tmp, 'fruits', 'oranges.beancount'))
             test_utils.create_temporary_files(tmp, {
                 'apples.beancount': """
-                  include "{root}/fruits/oranges.beancount"
+                  include "{include}"
                   2014-01-01 open Assets:Apples
                 """,
                 'fruits/oranges.beancount': """
                   2014-01-02 open Assets:Oranges
-                """})
+                """}, include=include)
             entries, errors, options_map = loader.load_file(
                 path.join(tmp, 'apples.beancount'))
         self.assertFalse(errors)
@@ -195,14 +200,15 @@ class TestLoadIncludes(unittest.TestCase):
 
     def test_load_file_with_relative_include(self):
         with test_utils.tempdir() as tmp:
+            include = _quote(path.join('fruits', 'oranges.beancount'))
             test_utils.create_temporary_files(tmp, {
                 'apples.beancount': """
-                  include "fruits/oranges.beancount"
+                  include "{include}"
                   2014-01-01 open Assets:Apples
                 """,
                 'fruits/oranges.beancount': """
                   2014-01-02 open Assets:Oranges
-                """})
+                """}, include=include)
             entries, errors, options_map = loader.load_file(
                 path.join(tmp, 'apples.beancount'))
         self.assertFalse(errors)
@@ -213,14 +219,17 @@ class TestLoadIncludes(unittest.TestCase):
     def test_load_file_with_multiple_includes(self):
         # Including recursive includes and mixed and absolute.
         with test_utils.tempdir() as tmp:
+            include = _quote(path.join('fruits', 'oranges.beancount'))
+            absolute = _quote(path.join(tmp, 'legumes', 'patates.beancount'))
+            relative = _quote(path.join('..', 'legumes', 'tomates.beancount'))
             test_utils.create_temporary_files(tmp, {
                 'apples.beancount': """
-                  include "fruits/oranges.beancount"
-                  include "{root}/legumes/patates.beancount"
+                  include "{include}"
+                  include "{absolute}"
                   2014-01-01 open Assets:Apples
                 """,
                 'fruits/oranges.beancount': """
-                  include "../legumes/tomates.beancount"
+                  include "{relative}"
                   2014-01-02 open Assets:Oranges
                 """,
                 'legumes/tomates.beancount': """
@@ -228,7 +237,7 @@ class TestLoadIncludes(unittest.TestCase):
                 """,
                 'legumes/patates.beancount': """
                   2014-01-04 open Assets:Patates
-                """})
+                """}, include=include, absolute=absolute, relative=relative)
             entries, errors, options_map = loader.load_file(
                 path.join(tmp, 'apples.beancount'))
         self.assertFalse(errors)
@@ -239,14 +248,17 @@ class TestLoadIncludes(unittest.TestCase):
 
     def test_load_file_with_duplicate_includes(self):
         with test_utils.tempdir() as tmp:
+            relative = _quote(path.join('fruits', 'oranges.beancount'))
+            absolute = _quote(path.join(tmp, 'legumes', 'tomates.beancount'))
+            duplicate = _quote(path.join('..', 'legumes', 'tomates.beancount'))
             test_utils.create_temporary_files(tmp, {
                 'apples.beancount': """
-                  include "fruits/oranges.beancount"
-                  include "{root}/legumes/tomates.beancount"
+                  include "{relative}"
+                  include "{absolute}"
                   2014-01-01 open Assets:Apples
                 """,
                 'fruits/oranges.beancount': """
-                  include "../legumes/tomates.beancount"
+                  include "{duplicate}"
                   2014-01-02 open Assets:Oranges
                 """,
                 'legumes/tomates.beancount': """
@@ -254,7 +266,7 @@ class TestLoadIncludes(unittest.TestCase):
                 """,
                 'legumes/patates.beancount': """
                   2014-01-04 open Assets:Patates
-                """})
+                """}, relative=relative, absolute=absolute, duplicate=duplicate)
             entries, errors, options_map = loader.load_file(
                 path.join(tmp, 'apples.beancount'))
         self.assertTrue(errors)
@@ -264,14 +276,15 @@ class TestLoadIncludes(unittest.TestCase):
 
     def test_load_string_with_relative_include(self):
         with test_utils.tempdir() as tmp:
+            include = _quote(path.join('fruits', 'oranges.beancount'))
             test_utils.create_temporary_files(tmp, {
                 'apples.beancount': """
-                  include "fruits/oranges.beancount"
+                  include "{include}"
                   2014-01-01 open Assets:Apples
                 """,
                 'fruits/oranges.beancount': """
                   2014-01-02 open Assets:Oranges
-                """})
+                """}, include=include)
             try:
                 cwd = os.getcwd()
                 os.chdir(tmp)
@@ -373,6 +386,7 @@ class TestLoadCache(unittest.TestCase):
                 """})
             top_filename = path.join(tmp, 'apples.beancount')
             entries, errors, options_map = loader.load_file(top_filename)
+            self.assertFalse(os.listdir(tmp))
             self.assertFalse(errors)
             self.assertEqual(3, len(entries))
             self.assertEqual(1, self.num_calls)

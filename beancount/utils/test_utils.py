@@ -170,7 +170,7 @@ def tempdir(delete=True, **kw):
             shutil.rmtree(tempdir, ignore_errors=True)
 
 
-def create_temporary_files(root, contents_map):
+def create_temporary_files(root, contents_map, **kwargs):
     """Create a number of temporary files under 'root'.
 
     This routine is used to initialize the contents of multiple files under a
@@ -184,14 +184,17 @@ def create_temporary_files(root, contents_map):
         directory name.
     """
     os.makedirs(root, exist_ok=True)
-    for relative_filename, contents in contents_map.items():
+    for relative_filename, content in contents_map.items():
         assert not path.isabs(relative_filename)
-        filename = path.join(root, relative_filename)
+        # This function accepts exclusively relative filenames with
+        # POSIX like path separators. The split and join dance allow
+        # it to work on Windows.
+        filename = path.join(root, *relative_filename.split('/'))
         os.makedirs(path.dirname(filename), exist_ok=True)
 
-        clean_contents = textwrap.dedent(contents.replace('{root}', root))
+        content = textwrap.dedent(content).format(root=root, **kwargs)
         with open(filename, 'w') as f:
-            f.write(clean_contents)
+            f.write(content)
 
 
 # TODO(blais): Improve this with kwargs instead.
