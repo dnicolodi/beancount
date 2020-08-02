@@ -261,11 +261,9 @@ def docfile(function, **kwargs):
         allowed = ('buffering', 'encoding', 'newline', 'dir', 'prefix', 'suffix')
         if any([key not in allowed for key in kwargs]):
             raise ValueError("Invalid kwarg to docfile_extra")
-        with tempfile.NamedTemporaryFile('w', **kwargs) as file:
-            text = function.__doc__
-            file.write(textwrap.dedent(text))
-            file.flush()
-            return function(self, file.name)
+        content = textwrap.dedent(function.__doc__)
+        with named_temp_file_content(content, **kwargs) as tmpname:
+            return function(self, tmpname)
     new_function.__doc__ = None
     return new_function
 
