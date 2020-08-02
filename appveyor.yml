@@ -9,7 +9,7 @@ install:
 
 test_script:
   - "%PYTHON%\\python.exe setup.py build_ext -i"
-  - "%PYTHON%\\python.exe -m pytest -x -v beancount"
+  - "%PYTHON%\\python.exe -m pytest -v beancount"
 
 after_test:
   - "%PYTHON%\\python.exe setup.py bdist_wheel"
