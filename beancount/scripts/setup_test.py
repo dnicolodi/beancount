@@ -142,6 +142,8 @@ class TestSetup(test_utils.TestCase):
         stdout, stderr = pipe.communicate()
         self.assertEqual(0, pipe.returncode, stderr)
 
+
+    @unittest.skipIf(sys.platform == 'win32', "This gets stuck on AppVeyor.")
     @unittest.skipIf(is_bazel_build(), "Cannot setup within Bazel.")
     def test_sdist_includes_c_files(self):
         # Clean previously built "build" output.
