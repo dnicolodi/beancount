@@ -3,6 +3,7 @@ __license__ = "GNU GPLv2"
 
 import unittest
 import urllib.parse
+import sys
 from os import path
 
 from beancount.utils import test_utils
@@ -10,6 +11,7 @@ from beancount.parser import version
 from beancount.web import web
 
 
+@unittest.skipIf(sys.platform == 'win32', "This gets stuck on AppVeyor.")
 class TestWeb(unittest.TestCase):
 
     # Docs cannot be read for external files.

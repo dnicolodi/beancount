@@ -129,6 +129,29 @@ def call_command(command):
 
 
 @contextlib.contextmanager
+def named_temp_file_content(content=None, **kwargs):
+    """A context manager that creates a named temporary file with the
+    specifid content and deletes it unconditionally once done. This is
+    meant to replace usages of tempfile.NamedTemporaryFile() as the
+    file returned by it cannot be opened again for reading on Windows.
+
+    Args:
+      content: A bytes object, the content to be written in the file.
+    Yields:
+      The file path to the temporary file.
+    """
+    fd, tmpname = tempfile.mkstemp(**kwargs)
+    if not isinstance(content, bytes):
+        content = content.encode('utf8')
+    os.write(fd, content)
+    os.close(fd)
+    try:
+        yield tmpname
+    finally:
+        os.unlink(tmpname)
+
+
+@contextlib.contextmanager
 def tempdir(delete=True, **kw):
     """A context manager that creates a temporary directory and deletes its
     contents unconditionally once done.
@@ -147,7 +170,7 @@ def tempdir(delete=True, **kw):
             shutil.rmtree(tempdir, ignore_errors=True)
 
 
-def create_temporary_files(root, contents_map):
+def create_temporary_files(root, contents_map, **kwargs):
     """Create a number of temporary files under 'root'.
 
     This routine is used to initialize the contents of multiple files under a
@@ -161,14 +184,17 @@ def create_temporary_files(root, contents_map):
         directory name.
     """
     os.makedirs(root, exist_ok=True)
-    for relative_filename, contents in contents_map.items():
+    for relative_filename, content in contents_map.items():
         assert not path.isabs(relative_filename)
-        filename = path.join(root, relative_filename)
+        # This function accepts exclusively relative filenames with
+        # POSIX like path separators. The split and join dance allow
+        # it to work on Windows.
+        filename = path.join(root, *relative_filename.split('/'))
         os.makedirs(path.dirname(filename), exist_ok=True)
 
-        clean_contents = textwrap.dedent(contents.replace('{root}', root))
+        content = textwrap.dedent(content).format(root=root, **kwargs)
         with open(filename, 'w') as f:
-            f.write(clean_contents)
+            f.write(content)
 
 
 # TODO(blais): Improve this with kwargs instead.
@@ -235,11 +261,9 @@ def docfile(function, **kwargs):
         allowed = ('buffering', 'encoding', 'newline', 'dir', 'prefix', 'suffix')
         if any([key not in allowed for key in kwargs]):
             raise ValueError("Invalid kwarg to docfile_extra")
-        with tempfile.NamedTemporaryFile('w', **kwargs) as file:
-            text = function.__doc__
-            file.write(textwrap.dedent(text))
-            file.flush()
-            return function(self, file.name)
+        content = textwrap.dedent(function.__doc__)
+        with named_temp_file_content(content, **kwargs) as tmpname:
+            return function(self, tmpname)
     new_function.__doc__ = None
     return new_function
 

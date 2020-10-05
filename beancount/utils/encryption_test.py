@@ -5,6 +5,8 @@ import os
 import unittest
 import subprocess
 import tempfile
+import sys
+import pytest
 from os import path
 
 from beancount.utils import encryption
@@ -84,6 +86,7 @@ INPUT = """\
 """
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="I cannot bother to make this work on Windows")
 class TestEncryptedBase(unittest.TestCase):
 
     def setUp(self):
