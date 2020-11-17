@@ -43,58 +43,6 @@
 #include "beancount/parser/parser.h"
 #include "beancount/parser/grammar.h"
 
-#ifdef __cplusplus
-
-#include <iostream>
-
-class pyistream : private std::streambuf , public std::istream
-{
-public:
-  pyistream(PyObject* in) : std::istream(this)
-  {
-    in_ = in;
-    Py_INCREF(in_);
-  }
-
-  ~pyistream()
-  {
-    Py_XDECREF(in_);
-  }
-
-private:
-  std::streamsize xsgetn(char* buf, std::streamsize n)
-  {
-    PyObject* dest = NULL;
-    PyObject *read = NULL;
-    size_t ret = 0;
-
-    dest = PyMemoryView_FromMemory(buf, n, PyBUF_WRITE);
-    if (!dest) {
-      goto out;
-    }
-
-    read = PyObject_CallMethod(in_, "readinto", "O", dest);
-    if (!read) {
-      goto out;
-    }
-
-    ret = PyLong_AsSize_t(read);
-    if (PyErr_Occurred()) {
-	ret = 0;
-    }
-
-  out:
-    Py_XDECREF(dest);
-    Py_XDECREF(read);
-
-    return ret;
-  }
-
-  PyObject* in_;
-};
-
-#endif
-
 struct _yyextra_t {
     /* The filename being tokenized. */
     PyObject* filename;
@@ -177,9 +125,13 @@ typedef reflex::FlexLexer<reflex::Matcher> FlexLexer;
 class yyFlexLexer : public FlexLexer {
 #line 20 "beancount/parser/lexer.l"
 
- public:
- std::istream* istream_;
- ~yyFlexLexer() { delete istream_; }
+    virtual size_t LexerInput(char *s, size_t n)
+    {
+        if (!yyget_extra(this)->in) {
+            return 0;
+        }
+        return pyfile_read_into(yyget_extra(this)->in, s, n);
+    }
 
  public:
   yyFlexLexer(
@@ -188,10 +140,6 @@ class yyFlexLexer : public FlexLexer {
     :
       FlexLexer(input, os)
   {
-#line 26 "beancount/parser/lexer.l"
-
-    istream_ = NULL;
-
   }
   virtual void yylloc_update(YYLTYPE& yylloc)
   {

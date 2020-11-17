@@ -40,58 +40,6 @@
 #include "beancount/parser/parser.h"
 #include "beancount/parser/grammar.h"
 
-#ifdef __cplusplus
-
-#include <iostream>
-
-class pyistream : private std::streambuf , public std::istream
-{
-public:
-  pyistream(PyObject* in) : std::istream(this)
-  {
-    in_ = in;
-    Py_INCREF(in_);
-  }
-
-  ~pyistream()
-  {
-    Py_XDECREF(in_);
-  }
-
-private:
-  std::streamsize xsgetn(char* buf, std::streamsize n)
-  {
-    PyObject* dest = NULL;
-    PyObject *read = NULL;
-    size_t ret = 0;
-
-    dest = PyMemoryView_FromMemory(buf, n, PyBUF_WRITE);
-    if (!dest) {
-      goto out;
-    }
-
-    read = PyObject_CallMethod(in_, "readinto", "O", dest);
-    if (!read) {
-      goto out;
-    }
-
-    ret = PyLong_AsSize_t(read);
-    if (PyErr_Occurred()) {
-	ret = 0;
-    }
-
-  out:
-    Py_XDECREF(dest);
-    Py_XDECREF(read);
-
-    return ret;
-  }
-
-  PyObject* in_;
-};
-
-#endif
-
 struct _yyextra_t {
     /* The filename being tokenized. */
     PyObject* filename;
@@ -183,9 +131,13 @@ typedef reflex::FlexLexer<reflex::Matcher> FlexLexer;
 class yyFlexLexer : public FlexLexer {
 #line 20 "beancount/parser/lexer.l"
 
- public:
- std::istream* istream_;
- ~yyFlexLexer() { delete istream_; }
+    virtual size_t LexerInput(char *s, size_t n)
+    {
+        if (!yyget_extra(this)->in) {
+            return 0;
+        }
+        return pyfile_read_into(yyget_extra(this)->in, s, n);
+    }
 
  public:
   yyFlexLexer(
@@ -194,10 +146,6 @@ class yyFlexLexer : public FlexLexer {
     :
       FlexLexer(input, os)
   {
-#line 26 "beancount/parser/lexer.l"
-
-    istream_ = NULL;
-
   }
   virtual void yylloc_update(YYLTYPE& yylloc)
   {
@@ -233,7 +181,7 @@ class yyFlexLexer : public FlexLexer {
 /* %option 8bit */
 #line 30 "beancount/parser/lexer.l"
 /* Top Code. This is included in the FLex generated header file. */
-#line 143 "beancount/parser/lexer.l"
+#line 91 "beancount/parser/lexer.l"
 /* Definitions. */
 
 
@@ -255,7 +203,7 @@ void build_lexer_error(YYLTYPE& loc, PyObject* builder, const char* format, ...)
 void build_lexer_error_from_exception(YYLTYPE& loc, PyObject* builder);
 
 
-#line 171 "beancount/parser/lexer.l"
+#line 119 "beancount/parser/lexer.l"
 /* Characters that may be used as flags. Make sure to include all the
   * values from beancount.core.flags to allow round-trips between text
   * and entries. {5307d8fa1e7b} */
@@ -384,7 +332,7 @@ int yyFlexLexer::yylex(YYSTYPE& yylval, YYLTYPE& yylloc, PyObject* builder)
   switch (start())
   {
     case INITIAL:
-#line 179 "beancount/parser/lexer.l"
+#line 127 "beancount/parser/lexer.l"
 /* Newlines are output as explicit tokens, because lines matter in the syntax. */
     break;
   }
@@ -401,7 +349,7 @@ int yyFlexLexer::yylex(YYSTYPE& yylval, YYLTYPE& yylloc, PyObject* builder)
           case 0:
             if (matcher().at_end())
             {
-#line 304 "beancount/parser/lexer.l"
+#line 252 "beancount/parser/lexer.l"
 {
     /* Ensure location data is populated. */
     YY_USER_ACTION;
@@ -418,9 +366,9 @@ int yyFlexLexer::yylex(YYSTYPE& yylval, YYLTYPE& yylloc, PyObject* builder)
               output(matcher().input());
             }
             YY_BREAK
-          case 1: // rule beancount/parser/lexer.l:179: \n :
+          case 1: // rule beancount/parser/lexer.l:127: \n :
             YY_USER_ACTION
-#line 179 "beancount/parser/lexer.l"
+#line 127 "beancount/parser/lexer.l"
 {
     return EOL;
 }
@@ -430,114 +378,114 @@ int yyFlexLexer::yylex(YYSTYPE& yylval, YYLTYPE& yylloc, PyObject* builder)
     initial indent and thus group postings and comments together in
     the grammar. */
             YY_BREAK
-          case 2: // rule beancount/parser/lexer.l:187: ^[ \t]+/[^ \t\r\n] :
+          case 2: // rule beancount/parser/lexer.l:135: ^[ \t]+/[^ \t\r\n] :
             YY_USER_ACTION
-#line 187 "beancount/parser/lexer.l"
+#line 135 "beancount/parser/lexer.l"
 { return INDENT; }
             YY_BREAK
-          case 3: // rule beancount/parser/lexer.l:188: [ \t\r]+ :
+          case 3: // rule beancount/parser/lexer.l:136: [ \t\r]+ :
             YY_USER_ACTION
-#line 188 "beancount/parser/lexer.l"
+#line 136 "beancount/parser/lexer.l"
 { }
 
  /* Comments. */
             YY_BREAK
-          case 4: // rule beancount/parser/lexer.l:191: ;.* :
+          case 4: // rule beancount/parser/lexer.l:139: ;.* :
             YY_USER_ACTION
-#line 191 "beancount/parser/lexer.l"
+#line 139 "beancount/parser/lexer.l"
 { }
 
  /* Characters with special meanings have their own tokens. */
             YY_BREAK
-          case 5: // rule beancount/parser/lexer.l:194: \| :
+          case 5: // rule beancount/parser/lexer.l:142: \| :
             YY_USER_ACTION
-#line 194 "beancount/parser/lexer.l"
+#line 142 "beancount/parser/lexer.l"
 { return PIPE; }
             YY_BREAK
-          case 6: // rule beancount/parser/lexer.l:195: @@ :
+          case 6: // rule beancount/parser/lexer.l:143: @@ :
             YY_USER_ACTION
-#line 195 "beancount/parser/lexer.l"
+#line 143 "beancount/parser/lexer.l"
 { return ATAT; }
             YY_BREAK
-          case 7: // rule beancount/parser/lexer.l:196: @ :
+          case 7: // rule beancount/parser/lexer.l:144: @ :
             YY_USER_ACTION
-#line 196 "beancount/parser/lexer.l"
+#line 144 "beancount/parser/lexer.l"
 { return AT; }
             YY_BREAK
-          case 8: // rule beancount/parser/lexer.l:197: \{\{ :
+          case 8: // rule beancount/parser/lexer.l:145: \{\{ :
             YY_USER_ACTION
-#line 197 "beancount/parser/lexer.l"
+#line 145 "beancount/parser/lexer.l"
 { return LCURLCURL; }
             YY_BREAK
-          case 9: // rule beancount/parser/lexer.l:198: \}\} :
+          case 9: // rule beancount/parser/lexer.l:146: \}\} :
             YY_USER_ACTION
-#line 198 "beancount/parser/lexer.l"
+#line 146 "beancount/parser/lexer.l"
 { return RCURLCURL; }
             YY_BREAK
-          case 10: // rule beancount/parser/lexer.l:199: \{ :
+          case 10: // rule beancount/parser/lexer.l:147: \{ :
             YY_USER_ACTION
-#line 199 "beancount/parser/lexer.l"
+#line 147 "beancount/parser/lexer.l"
 { return LCURL; }
             YY_BREAK
-          case 11: // rule beancount/parser/lexer.l:200: \} :
+          case 11: // rule beancount/parser/lexer.l:148: \} :
             YY_USER_ACTION
-#line 200 "beancount/parser/lexer.l"
+#line 148 "beancount/parser/lexer.l"
 { return RCURL; }
             YY_BREAK
-          case 12: // rule beancount/parser/lexer.l:201: , :
+          case 12: // rule beancount/parser/lexer.l:149: , :
             YY_USER_ACTION
-#line 201 "beancount/parser/lexer.l"
+#line 149 "beancount/parser/lexer.l"
 { return COMMA; }
             YY_BREAK
-          case 13: // rule beancount/parser/lexer.l:202: \~ :
+          case 13: // rule beancount/parser/lexer.l:150: \~ :
             YY_USER_ACTION
-#line 202 "beancount/parser/lexer.l"
+#line 150 "beancount/parser/lexer.l"
 { return TILDE; }
             YY_BREAK
-          case 14: // rule beancount/parser/lexer.l:203: \+ :
+          case 14: // rule beancount/parser/lexer.l:151: \+ :
             YY_USER_ACTION
-#line 203 "beancount/parser/lexer.l"
+#line 151 "beancount/parser/lexer.l"
 { return PLUS; }
             YY_BREAK
-          case 15: // rule beancount/parser/lexer.l:204: \- :
+          case 15: // rule beancount/parser/lexer.l:152: \- :
             YY_USER_ACTION
-#line 204 "beancount/parser/lexer.l"
+#line 152 "beancount/parser/lexer.l"
 { return MINUS; }
             YY_BREAK
-          case 16: // rule beancount/parser/lexer.l:205: \/ :
+          case 16: // rule beancount/parser/lexer.l:153: \/ :
             YY_USER_ACTION
-#line 205 "beancount/parser/lexer.l"
+#line 153 "beancount/parser/lexer.l"
 { return SLASH; }
             YY_BREAK
-          case 17: // rule beancount/parser/lexer.l:206: \( :
+          case 17: // rule beancount/parser/lexer.l:154: \( :
             YY_USER_ACTION
-#line 206 "beancount/parser/lexer.l"
+#line 154 "beancount/parser/lexer.l"
 { return LPAREN; }
             YY_BREAK
-          case 18: // rule beancount/parser/lexer.l:207: \) :
+          case 18: // rule beancount/parser/lexer.l:155: \) :
             YY_USER_ACTION
-#line 207 "beancount/parser/lexer.l"
+#line 155 "beancount/parser/lexer.l"
 { return RPAREN; }
             YY_BREAK
-          case 19: // rule beancount/parser/lexer.l:208: \# :
+          case 19: // rule beancount/parser/lexer.l:156: \# :
             YY_USER_ACTION
-#line 208 "beancount/parser/lexer.l"
+#line 156 "beancount/parser/lexer.l"
 { return HASH; }
             YY_BREAK
-          case 20: // rule beancount/parser/lexer.l:209: \* :
+          case 20: // rule beancount/parser/lexer.l:157: \* :
             YY_USER_ACTION
-#line 209 "beancount/parser/lexer.l"
+#line 157 "beancount/parser/lexer.l"
 { return ASTERISK; }
             YY_BREAK
-          case 21: // rule beancount/parser/lexer.l:210: \: :
+          case 21: // rule beancount/parser/lexer.l:158: \: :
             YY_USER_ACTION
-#line 210 "beancount/parser/lexer.l"
+#line 158 "beancount/parser/lexer.l"
 { return COLON; }
 
             YY_BREAK
-          case 22: // rule beancount/parser/lexer.l:212: {FLAGS} :
+          case 22: // rule beancount/parser/lexer.l:160: {FLAGS} :
             YY_USER_ACTION
-#line 212 "beancount/parser/lexer.l"
+#line 160 "beancount/parser/lexer.l"
 {
     yylval.character = yytext[0];
     return FLAG;
@@ -545,140 +493,140 @@ int yyFlexLexer::yylex(YYSTYPE& yylval, YYLTYPE& yylloc, PyObject* builder)
 
  /* Keywords. */
             YY_BREAK
-          case 23: // rule beancount/parser/lexer.l:218: txn :
+          case 23: // rule beancount/parser/lexer.l:166: txn :
             YY_USER_ACTION
-#line 218 "beancount/parser/lexer.l"
+#line 166 "beancount/parser/lexer.l"
 { return TXN; }
             YY_BREAK
-          case 24: // rule beancount/parser/lexer.l:219: balance :
+          case 24: // rule beancount/parser/lexer.l:167: balance :
             YY_USER_ACTION
-#line 219 "beancount/parser/lexer.l"
+#line 167 "beancount/parser/lexer.l"
 { return BALANCE; }
             YY_BREAK
-          case 25: // rule beancount/parser/lexer.l:220: open :
+          case 25: // rule beancount/parser/lexer.l:168: open :
             YY_USER_ACTION
-#line 220 "beancount/parser/lexer.l"
+#line 168 "beancount/parser/lexer.l"
 { return OPEN; }
             YY_BREAK
-          case 26: // rule beancount/parser/lexer.l:221: close :
+          case 26: // rule beancount/parser/lexer.l:169: close :
             YY_USER_ACTION
-#line 221 "beancount/parser/lexer.l"
+#line 169 "beancount/parser/lexer.l"
 { return CLOSE; }
             YY_BREAK
-          case 27: // rule beancount/parser/lexer.l:222: commodity :
+          case 27: // rule beancount/parser/lexer.l:170: commodity :
             YY_USER_ACTION
-#line 222 "beancount/parser/lexer.l"
+#line 170 "beancount/parser/lexer.l"
 { return COMMODITY; }
             YY_BREAK
-          case 28: // rule beancount/parser/lexer.l:223: pad :
+          case 28: // rule beancount/parser/lexer.l:171: pad :
             YY_USER_ACTION
-#line 223 "beancount/parser/lexer.l"
+#line 171 "beancount/parser/lexer.l"
 { return PAD; }
             YY_BREAK
-          case 29: // rule beancount/parser/lexer.l:224: event :
+          case 29: // rule beancount/parser/lexer.l:172: event :
             YY_USER_ACTION
-#line 224 "beancount/parser/lexer.l"
+#line 172 "beancount/parser/lexer.l"
 { return EVENT; }
             YY_BREAK
-          case 30: // rule beancount/parser/lexer.l:225: query :
+          case 30: // rule beancount/parser/lexer.l:173: query :
             YY_USER_ACTION
-#line 225 "beancount/parser/lexer.l"
+#line 173 "beancount/parser/lexer.l"
 { return QUERY; }
             YY_BREAK
-          case 31: // rule beancount/parser/lexer.l:226: custom :
+          case 31: // rule beancount/parser/lexer.l:174: custom :
             YY_USER_ACTION
-#line 226 "beancount/parser/lexer.l"
+#line 174 "beancount/parser/lexer.l"
 { return CUSTOM; }
             YY_BREAK
-          case 32: // rule beancount/parser/lexer.l:227: price :
+          case 32: // rule beancount/parser/lexer.l:175: price :
             YY_USER_ACTION
-#line 227 "beancount/parser/lexer.l"
+#line 175 "beancount/parser/lexer.l"
 { return PRICE; }
             YY_BREAK
-          case 33: // rule beancount/parser/lexer.l:228: note :
+          case 33: // rule beancount/parser/lexer.l:176: note :
             YY_USER_ACTION
-#line 228 "beancount/parser/lexer.l"
+#line 176 "beancount/parser/lexer.l"
 { return NOTE; }
             YY_BREAK
-          case 34: // rule beancount/parser/lexer.l:229: document :
+          case 34: // rule beancount/parser/lexer.l:177: document :
             YY_USER_ACTION
-#line 229 "beancount/parser/lexer.l"
+#line 177 "beancount/parser/lexer.l"
 { return DOCUMENT; }
             YY_BREAK
-          case 35: // rule beancount/parser/lexer.l:230: pushtag :
+          case 35: // rule beancount/parser/lexer.l:178: pushtag :
             YY_USER_ACTION
-#line 230 "beancount/parser/lexer.l"
+#line 178 "beancount/parser/lexer.l"
 { return PUSHTAG; }
             YY_BREAK
-          case 36: // rule beancount/parser/lexer.l:231: poptag :
+          case 36: // rule beancount/parser/lexer.l:179: poptag :
             YY_USER_ACTION
-#line 231 "beancount/parser/lexer.l"
+#line 179 "beancount/parser/lexer.l"
 { return POPTAG; }
             YY_BREAK
-          case 37: // rule beancount/parser/lexer.l:232: pushmeta :
+          case 37: // rule beancount/parser/lexer.l:180: pushmeta :
             YY_USER_ACTION
-#line 232 "beancount/parser/lexer.l"
+#line 180 "beancount/parser/lexer.l"
 { return PUSHMETA; }
             YY_BREAK
-          case 38: // rule beancount/parser/lexer.l:233: popmeta :
+          case 38: // rule beancount/parser/lexer.l:181: popmeta :
             YY_USER_ACTION
-#line 233 "beancount/parser/lexer.l"
+#line 181 "beancount/parser/lexer.l"
 { return POPMETA; }
             YY_BREAK
-          case 39: // rule beancount/parser/lexer.l:234: option :
+          case 39: // rule beancount/parser/lexer.l:182: option :
             YY_USER_ACTION
-#line 234 "beancount/parser/lexer.l"
+#line 182 "beancount/parser/lexer.l"
 { return OPTION; }
             YY_BREAK
-          case 40: // rule beancount/parser/lexer.l:235: plugin :
+          case 40: // rule beancount/parser/lexer.l:183: plugin :
             YY_USER_ACTION
-#line 235 "beancount/parser/lexer.l"
+#line 183 "beancount/parser/lexer.l"
 { return PLUGIN; }
             YY_BREAK
-          case 41: // rule beancount/parser/lexer.l:236: include :
+          case 41: // rule beancount/parser/lexer.l:184: include :
             YY_USER_ACTION
-#line 236 "beancount/parser/lexer.l"
+#line 184 "beancount/parser/lexer.l"
 { return INCLUDE; }
 
  /* Boolean values. */
             YY_BREAK
-          case 42: // rule beancount/parser/lexer.l:239: TRUE :
+          case 42: // rule beancount/parser/lexer.l:187: TRUE :
             YY_USER_ACTION
-#line 239 "beancount/parser/lexer.l"
+#line 187 "beancount/parser/lexer.l"
 {
     return token(BOOL, true);
 }
 
             YY_BREAK
-          case 43: // rule beancount/parser/lexer.l:243: FALSE :
+          case 43: // rule beancount/parser/lexer.l:191: FALSE :
             YY_USER_ACTION
-#line 243 "beancount/parser/lexer.l"
+#line 191 "beancount/parser/lexer.l"
 {
     return token(BOOL, false);
 }
 
             YY_BREAK
-          case 44: // rule beancount/parser/lexer.l:247: NULL :
+          case 44: // rule beancount/parser/lexer.l:195: NULL :
             YY_USER_ACTION
-#line 247 "beancount/parser/lexer.l"
+#line 195 "beancount/parser/lexer.l"
 {
     return token(NONE);
 }
 
  /* Dates. */
             YY_BREAK
-          case 45: // rule beancount/parser/lexer.l:252: [0-9]{4,}[\-/][0-9]+[\-/][0-9]+ :
+          case 45: // rule beancount/parser/lexer.l:200: [0-9]{4,}[\-/][0-9]+[\-/][0-9]+ :
             YY_USER_ACTION
-#line 252 "beancount/parser/lexer.l"
+#line 200 "beancount/parser/lexer.l"
 {
     return token(DATE, yytext);
 }
 
  /* Account names. */
             YY_BREAK
-          case 46: // rule beancount/parser/lexer.l:257: {ACCOUNTTYPE}(:{ACCOUNTNAME})+ :
+          case 46: // rule beancount/parser/lexer.l:205: {ACCOUNTTYPE}(:{ACCOUNTNAME})+ :
             YY_USER_ACTION
-#line 257 "beancount/parser/lexer.l"
+#line 205 "beancount/parser/lexer.l"
 {
     return token(ACCOUNT, yytext);
 }
@@ -686,54 +634,54 @@ int yyFlexLexer::yylex(YYSTYPE& yylval, YYLTYPE& yylloc, PyObject* builder)
  /* Currencies. These are defined as uppercase only in order to disambiguate the
   * syntax. This is kept in sync with beancount.core.amount.CURRENCY_RE. */
             YY_BREAK
-          case 47: // rule beancount/parser/lexer.l:263: [A-Z][A-Z0-9\'\.\_\-]{0,22}[A-Z0-9] :
+          case 47: // rule beancount/parser/lexer.l:211: [A-Z][A-Z0-9\'\.\_\-]{0,22}[A-Z0-9] :
             YY_USER_ACTION
-#line 263 "beancount/parser/lexer.l"
+#line 211 "beancount/parser/lexer.l"
 {
     return token(CURRENCY, yytext, yyleng);
 }
 
  /* String literals. */
             YY_BREAK
-          case 48: // rule beancount/parser/lexer.l:268: \"([^\\\"]|\\.)*\" :
+          case 48: // rule beancount/parser/lexer.l:216: \"([^\\\"]|\\.)*\" :
             YY_USER_ACTION
-#line 268 "beancount/parser/lexer.l"
+#line 216 "beancount/parser/lexer.l"
 {
-    return token(STRING, yytext + 1, yyleng - 2, "utf8");
+    return token(STRING, yytext + 1, yyleng - 2, yy_encoding);
 }
 
  /* Numbers */
             YY_BREAK
-          case 49: // rule beancount/parser/lexer.l:273: ([0-9]+|[0-9][0-9,]+[0-9])(\.[0-9]*)? :
+          case 49: // rule beancount/parser/lexer.l:221: ([0-9]+|[0-9][0-9,]+[0-9])(\.[0-9]*)? :
             YY_USER_ACTION
-#line 273 "beancount/parser/lexer.l"
+#line 221 "beancount/parser/lexer.l"
 {
     return token(NUMBER, yytext);
 }
 
  /* Tags */
             YY_BREAK
-          case 50: // rule beancount/parser/lexer.l:278: #[A-Za-z0-9\-_/.]+ :
+          case 50: // rule beancount/parser/lexer.l:226: #[A-Za-z0-9\-_/.]+ :
             YY_USER_ACTION
-#line 278 "beancount/parser/lexer.l"
+#line 226 "beancount/parser/lexer.l"
 {
     return token(TAG, yytext + 1, yyleng - 1);
 }
 
  /* Links */
             YY_BREAK
-          case 51: // rule beancount/parser/lexer.l:283: \^[A-Za-z0-9\-_/.]+ :
+          case 51: // rule beancount/parser/lexer.l:231: \^[A-Za-z0-9\-_/.]+ :
             YY_USER_ACTION
-#line 283 "beancount/parser/lexer.l"
+#line 231 "beancount/parser/lexer.l"
 {
     return token(LINK, yytext + 1, yyleng - 1);
 }
 
  /* Keys */
             YY_BREAK
-          case 52: // rule beancount/parser/lexer.l:288: [a-z][a-zA-Z0-9\-_]+/: :
+          case 52: // rule beancount/parser/lexer.l:236: [a-z][a-zA-Z0-9\-_]+/: :
             YY_USER_ACTION
-#line 288 "beancount/parser/lexer.l"
+#line 236 "beancount/parser/lexer.l"
 {
     return token(KEY, yytext, yyleng);
 }
@@ -742,21 +690,21 @@ int yyFlexLexer::yylex(YYSTYPE& yylval, YYLTYPE& yylloc, PyObject* builder)
   * in the FLAGS characters set are ignored. This rule is inserted
   * here to give higher precedence to rules matching valid tokens. */
             YY_BREAK
-          case 53: // rule beancount/parser/lexer.l:295: ^[\*\:\#] :
+          case 53: // rule beancount/parser/lexer.l:243: ^[\*\:\#] :
             YY_USER_ACTION
-#line 295 "beancount/parser/lexer.l"
+#line 243 "beancount/parser/lexer.l"
 { BEGIN(IGNORE); }
             YY_BREAK
-          case 54: // rule beancount/parser/lexer.l:296: ^{FLAGS} :
+          case 54: // rule beancount/parser/lexer.l:244: ^{FLAGS} :
             YY_USER_ACTION
-#line 296 "beancount/parser/lexer.l"
+#line 244 "beancount/parser/lexer.l"
 { BEGIN(IGNORE); }
 
  /* Default rule. {bf253a29a820} */
             YY_BREAK
-          case 55: // rule beancount/parser/lexer.l:299: . :
+          case 55: // rule beancount/parser/lexer.l:247: . :
             YY_USER_ACTION
-#line 299 "beancount/parser/lexer.l"
+#line 247 "beancount/parser/lexer.l"
 {
     unput(*yytext);
     BEGIN(INVALID);
@@ -774,7 +722,7 @@ int yyFlexLexer::yylex(YYSTYPE& yylval, YYLTYPE& yylloc, PyObject* builder)
           case 0:
             if (matcher().at_end())
             {
-#line 304 "beancount/parser/lexer.l"
+#line 252 "beancount/parser/lexer.l"
 {
     /* Ensure location data is populated. */
     YY_USER_ACTION;
@@ -791,9 +739,9 @@ int yyFlexLexer::yylex(YYSTYPE& yylval, YYLTYPE& yylloc, PyObject* builder)
               output(matcher().input());
             }
             YY_BREAK
-          case 1: // rule beancount/parser/lexer.l:314: [^ \t\r\n]+ :
+          case 1: // rule beancount/parser/lexer.l:262: [^ \t\r\n]+ :
             YY_USER_ACTION
-#line 314 "beancount/parser/lexer.l"
+#line 262 "beancount/parser/lexer.l"
 {
     build_lexer_error(yylloc, builder, "Invalid token: '%s'", yytext);
     BEGIN(INITIAL);
@@ -802,9 +750,9 @@ int yyFlexLexer::yylex(YYSTYPE& yylval, YYLTYPE& yylloc, PyObject* builder)
 
  /* Only the '.' pattern matches invalid encoding bytes. */
             YY_BREAK
-          case 2: // rule beancount/parser/lexer.l:321: . :
+          case 2: // rule beancount/parser/lexer.l:269: . :
             YY_USER_ACTION
-#line 321 "beancount/parser/lexer.l"
+#line 269 "beancount/parser/lexer.l"
 {
     build_lexer_error(yylloc, builder, "Unicode decode error: byte \\x%x is not valid", yytext[0] & 0xFF);
     BEGIN(INITIAL);
@@ -823,7 +771,7 @@ int yyFlexLexer::yylex(YYSTYPE& yylval, YYLTYPE& yylloc, PyObject* builder)
           case 0:
             if (matcher().at_end())
             {
-#line 304 "beancount/parser/lexer.l"
+#line 252 "beancount/parser/lexer.l"
 {
     /* Ensure location data is populated. */
     YY_USER_ACTION;
@@ -840,9 +788,9 @@ int yyFlexLexer::yylex(YYSTYPE& yylval, YYLTYPE& yylloc, PyObject* builder)
               output(matcher().input());
             }
             YY_BREAK
-          case 1: // rule beancount/parser/lexer.l:327: .* :
+          case 1: // rule beancount/parser/lexer.l:275: .* :
             YY_USER_ACTION
-#line 327 "beancount/parser/lexer.l"
+#line 275 "beancount/parser/lexer.l"
 {
     BEGIN(INITIAL);
 }
@@ -862,7 +810,7 @@ int yyFlexLexer::yylex(YYSTYPE& yylval, YYLTYPE& yylloc, PyObject* builder)
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-#line 332 "beancount/parser/lexer.l"
+#line 280 "beancount/parser/lexer.l"
 
 YY_EXTERN_C yyscan_t yylex_new(void)
 {
@@ -926,12 +874,13 @@ YY_EXTERN_C void yylex_initialize(PyObject* file, PyObject* filename, int lineno
     Py_XDECREF(extra->filename);
     extra->filename = filename;
 
-    yyscanner_t* s = static_cast<yyscanner_t*>(scanner);
-    pyistream* i = new pyistream(file);
-    delete s->istream_;
-    s->istream_ = i;
-    yyrestart(reflex::Input(s->istream_), scanner);
+    extra->encoding = encoding ? encoding : "utf-8";
 
+    Py_XDECREF(extra->in);
+    extra->in = file;
+    Py_INCREF(file);
+
+    yyrestart("", scanner);
     yyset_lineno(lineno, scanner);
 }
 
