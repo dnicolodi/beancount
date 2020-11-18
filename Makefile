@@ -19,7 +19,7 @@ PYCONFIG = "python$(PYVERSION)-config"
 CFLAGS += $(shell $(PYCONFIG) --cflags) -I$(PWD) -UNDEBUG -Wno-unused-function -Wno-unused-variable
 CPPFLAGS += $(shell $(PYCONFIG) --cflags) -I$(PWD) -UNDEBUG -Wno-unused-function -Wno-unused-variable
 LDFLAGS += $(shell $(PYCONFIG) --embed --ldflags)
-LDLIBS += $(shell $(PYCONFIG) --embed --libs)
+LDLIBS += $(shell $(PYCONFIG) --embed --libs) -lstdc++
 
 all: build
 
@@ -59,13 +59,14 @@ build: $(SOURCES)
 
 $(CROOT)/tokens_test: $(CROOT)/tokens_test.o $(CROOT)/tokens.o $(CROOT)/decimal.o
 
+$(CROOT)/pyistream_test: $(CROOT)/pyistream_test.o ../RE-flex/lib/libreflex.a
+
 .PHONY: ctest
 ctest: $(CROOT)/tokens_test
 	$(CROOT)/tokens_test
 
 build35: $(SOURCES)
 	python3.5 setup.py build_ext -i
-
 
 # Dump the lexer parsed output. This can be used to check across languages.
 dump_lexer:
