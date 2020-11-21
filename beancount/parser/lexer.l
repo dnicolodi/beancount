@@ -9,22 +9,41 @@
 %option bison-bridge
 %option bison-locations
 %option reentrant
-%option extra-type="yyextra_t*"
 /* %option nodefault */
 /* %option debug */
 /* %option stack */
 /* %option 8bit */
 %option nostdinit
 %option params="PyObject* builder"
+%option lexer="Lexer"
 
 %class{
+  public:
+    /* The Python file object to read from. */
+    PyObject* pyin;
+
+    /* The filename being tokenized. */
+    PyObject* filename;
+
+    /* The encoding to use for converting strings. */
+    const char* encoding;
+
+    ~Lexer() {
+        Py_XDECREF(filename);
+        Py_XDECREF(pyin);
+    }
+
     virtual size_t LexerInput(char *s, size_t n) {
-        PyObject* in = yyget_extra(this)->in;
-        if (!in) {
+        if (!this->pyin) {
             return 0;
         }
-        return pyfile_read_into(in, s, n);
+        return pyfile_read_into(this->pyin, s, n);
     }
+}
+
+%init{
+    filename = NULL;
+    pyin = NULL;
 }
 
 /* Top Code. This is included in the FLex generated header file. */
@@ -34,25 +53,12 @@
 #include "beancount/parser/parser.h"
 #include "beancount/parser/grammar.h"
 
-struct _yyextra_t {
-    /* The Python file object to read from. */
-    PyObject* in;
-
-    /* The filename being tokenized. */
-    PyObject* filename;
-
-    /* The encoding to use for converting strings. */
-    const char* encoding;
-};
-
 #define YY_EXTERN_C extern "C"
 
-#define YY_USER_ACTION                                          \
-    {                                                           \
-        yylloc.file_name = yyget_extra(yyscanner)->filename;    \
+#define YY_USER_ACTION                                       \
+    {                                                        \
+        yylloc.file_name = this->filename;                   \
     }
-
-typedef struct _yyextra_t yyextra_t;
 
 C_BEGIN_DECLS
 
@@ -213,7 +219,7 @@ NULL		{
 
  /* String literals. */
 \"([^\\\"]|\\.)*\"		{
-    return token(STRING, yytext + 1, yyleng - 2, yyget_extra(yyscanner)->encoding);
+    return token(STRING, yytext + 1, yyleng - 2, this->encoding);
 }
 
  /* Numbers */
@@ -280,20 +286,11 @@ NULL		{
 YY_EXTERN_C yyscan_t yylex_new(void)
 {
     yyscan_t scanner;
-    yyextra_t* extra;
     YYSTYPE lval;
     YYLTYPE lloc;
 
-    extra = (yyextra_t*)malloc(sizeof(*extra));
-    if (!extra)
-        return NULL;
-
-    extra->filename = NULL;
-    extra->in = NULL;
-
-    yylex_init_extra(extra, &scanner);
+    yylex_init(&scanner);
     if (!scanner) {
-        free(extra);
         return NULL;
     }
 
@@ -305,22 +302,16 @@ YY_EXTERN_C yyscan_t yylex_new(void)
     return scanner;
 }
 
-YY_EXTERN_C yyscan_t yylex_free(yyscan_t scanner)
+YY_EXTERN_C yyscan_t yylex_free(yyscan_t _scanner)
 {
-    yyextra_t* extra = yyget_extra(scanner);
-
-    Py_XDECREF(extra->filename);
-    Py_XDECREF(extra->in);
-    free(extra);
-
-    yylex_destroy(scanner);
+    yylex_destroy(_scanner);
 
     return NULL;
 }
 
-YY_EXTERN_C void yylex_initialize(PyObject* file, PyObject* filename, int lineno, const char* encoding, yyscan_t scanner)
+YY_EXTERN_C void yylex_initialize(PyObject* file, PyObject* filename, int lineno, const char* encoding, yyscan_t _scanner)
 {
-    yyextra_t* extra = yyget_extra(scanner);
+    yyscanner_t* scanner = static_cast<yyscanner_t*>(_scanner);
 
     if (!filename || filename == Py_None) {
         /* If a filename has not been specified, get it from the 'name'
@@ -336,13 +327,13 @@ YY_EXTERN_C void yylex_initialize(PyObject* file, PyObject* filename, int lineno
         Py_INCREF(filename);
     }
 
-    Py_XDECREF(extra->filename);
-    extra->filename = filename;
+    Py_XDECREF(scanner->filename);
+    scanner->filename = filename;
 
-    extra->encoding = encoding ? encoding : "utf-8";
+    scanner->encoding = encoding ? encoding : "utf-8";
 
-    Py_XDECREF(extra->in);
-    extra->in = file;
+    Py_XDECREF(scanner->pyin);
+    scanner->pyin = file;
     Py_INCREF(file);
 
     yyrestart("", scanner);

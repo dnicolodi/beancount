@@ -13,12 +13,11 @@
 
 #define REFLEX_OPTION_bison_bridge        true
 #define REFLEX_OPTION_bison_locations     true
-#define REFLEX_OPTION_extra_type          yyextra_t*
 #define REFLEX_OPTION_flex                true
 #define REFLEX_OPTION_full                true
 #define REFLEX_OPTION_header_file         "beancount/parser/lexer.h"
 #define REFLEX_OPTION_lex                 yylex
-#define REFLEX_OPTION_lexer               yyFlexLexer
+#define REFLEX_OPTION_lexer               Lexer
 #define REFLEX_OPTION_never_interactive   true
 #define REFLEX_OPTION_nostdinit           true
 #define REFLEX_OPTION_noyywrap            true
@@ -36,32 +35,19 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-#line 31 "beancount/parser/lexer.l"
+#line 50 "beancount/parser/lexer.l"
 
 
 #include "beancount/parser/macros.h"
 #include "beancount/parser/parser.h"
 #include "beancount/parser/grammar.h"
 
-struct _yyextra_t {
-    /* The Python file object to read from. */
-    PyObject* in;
-
-    /* The filename being tokenized. */
-    PyObject* filename;
-
-    /* The encoding to use for converting strings. */
-    const char* encoding;
-};
-
 #define YY_EXTERN_C extern "C"
 
-#define YY_USER_ACTION                                          \
-    {                                                           \
-        yylloc.file_name = yyget_extra(yyscanner)->filename;    \
+#define YY_USER_ACTION                                       \
+    {                                                        \
+        yylloc.file_name = this->filename;                   \
     }
-
-typedef struct _yyextra_t yyextra_t;
 
 C_BEGIN_DECLS
 
@@ -124,24 +110,43 @@ typedef reflex::FlexLexer<reflex::Matcher> FlexLexer;
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-class yyFlexLexer : public FlexLexer {
+class Lexer : public FlexLexer {
 #line 20 "beancount/parser/lexer.l"
 
+  public:
+    /* The Python file object to read from. */
+    PyObject* pyin;
+
+    /* The filename being tokenized. */
+    PyObject* filename;
+
+    /* The encoding to use for converting strings. */
+    const char* encoding;
+
+    ~Lexer() {
+        Py_XDECREF(filename);
+        Py_XDECREF(pyin);
+    }
+
     virtual size_t LexerInput(char *s, size_t n) {
-        PyObject* in = yyget_extra(this)->in;
-        if (!in) {
+        if (!this->pyin) {
             return 0;
         }
-        return pyfile_read_into(in, s, n);
+        return pyfile_read_into(this->pyin, s, n);
     }
 
  public:
-  yyFlexLexer(
+  Lexer(
       const reflex::Input& input = reflex::Input(),
       std::ostream        *os    = NULL)
     :
       FlexLexer(input, os)
   {
+#line 44 "beancount/parser/lexer.l"
+
+    filename = NULL;
+    pyin = NULL;
+
   }
   virtual void yylloc_update(YYLTYPE& yylloc)
   {
@@ -152,7 +157,7 @@ class yyFlexLexer : public FlexLexer {
   }
   virtual int yylex(void)
   {
-    LexerError("yyFlexLexer::yylex invoked but %option bison-bridge and/or bison-locations is used");
+    LexerError("Lexer::yylex invoked but %option bison-bridge and/or bison-locations is used");
     yyterminate();
   }
   virtual int yylex(YYSTYPE& yylval, YYLTYPE& yylloc, PyObject* builder);
@@ -165,7 +170,7 @@ class yyFlexLexer : public FlexLexer {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef void *yyscan_t;
-typedef yyFlexLexer yyscanner_t;
+typedef Lexer yyscanner_t;
 
 #ifndef YY_EXTERN_C
 #define YY_EXTERN_C
@@ -190,14 +195,14 @@ YY_EXTERN_C FILE *yyget_in(yyscan_t);
 YY_EXTERN_C void yyset_in(FILE*, yyscan_t);
 YY_EXTERN_C int yyget_debug(yyscan_t);
 YY_EXTERN_C void yyset_debug(int, yyscan_t);
-YY_EXTERN_C yyextra_t* yyget_extra(yyscan_t);
-YY_EXTERN_C void yyset_extra(yyextra_t*, yyscan_t);
+YY_EXTERN_C void* yyget_extra(yyscan_t);
+YY_EXTERN_C void yyset_extra(void*, yyscan_t);
 
 #endif // __cplusplus
 
 YY_EXTERN_C int yylex(YYSTYPE*, YYLTYPE*, yyscan_t, PyObject* builder);
 YY_EXTERN_C void yylex_init(yyscan_t*);
-YY_EXTERN_C void yylex_init_extra(yyextra_t*, yyscan_t*);
+YY_EXTERN_C void yylex_init_extra(void*, yyscan_t*);
 YY_EXTERN_C void yylex_destroy(yyscan_t);
 
 #endif
