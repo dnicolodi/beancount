@@ -13,4 +13,13 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python }}
-      - run: python setup.py build_ext
+      - uses: msys2/setup-msys2@v2
+        with:
+          install: bison flex make
+          path-type: inherit
+      - run: make
+        shell: msys2 {0}
+      - run: |
+          bison --version
+          flex --version
+        shell: msys2 {0}
