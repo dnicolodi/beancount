@@ -20,6 +20,9 @@ jobs:
       # The newly pushed tag or the tag specified in the workflow dispatch.
       TAG: ${{ github.event.push.tag || github.event.inputs.tag }}
     steps:
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
       - uses: actions/checkout@v2
         with:
           ref: ${{ env.TAG }}
@@ -35,12 +38,9 @@ jobs:
           if tag != version:
               sys.exit(1)
         shell: python
-      - uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python }}
       - run: python -m pip install wheel twine
       - run: python setup.py bdist_wheel
-      - run: twine upload dist/beancount-$TAG-*.whl
+      - run: twine upload dist/beancount-*.whl
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
